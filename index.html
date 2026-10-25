@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Litrato · Free online photobooth</title>
+    <meta name="description" content="A free photobooth in your browser. Take 4 photos, get a photo strip, and save it with no fees and no watermark. Your photos never leave your device.">
+    <meta name="theme-color" content="#1d5654">
+    <link rel="preload" href="fonts/bungee.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d5654'/%3E%3Crect x='20' y='8' width='24' height='48' rx='3' fill='%23fff'/%3E%3Crect x='24' y='12' width='16' height='10' fill='%23ffd23f'/%3E%3Crect x='24' y='26' width='16' height='10' fill='%23ffd23f'/%3E%3Crect x='24' y='40' width='16' height='10' fill='%23ffd23f'/%3E%3C/svg%3E">
+</head>
+<body>
+    <header class="marquee">
+        <h1 class="logo">Litrato</h1>
+        <p class="tagline">Take 4 photos, get your strip, save it free. No watermark.</p>
+    </header>
+
+    <main class="booth" id="booth">
+        <section class="stage" aria-label="Camera">
+            <div class="window" id="window">
+                <video id="video" autoplay playsinline muted></video>
+                <div class="count" id="count" aria-hidden="true"></div>
+                <div class="flash" id="flash" aria-hidden="true"></div>
+
+                <div class="cam-start" id="cam-start">
+                    <p>The booth needs your camera.</p>
+                    <button type="button" class="btn btn-flash" id="btn-camera">Turn on camera</button>
+                    <label class="link-btn" for="upload">or use photos from your device</label>
+                    <p class="cam-error" id="cam-error" role="alert" hidden></p>
+                </div>
+            </div>
+
+            <p class="status" id="status" aria-live="polite"></p>
+
+            <div class="controls">
+                <fieldset class="choice" id="layout-choice">
+                    <legend>Layout</legend>
+                    <label><input type="radio" name="layout" value="strip" checked><span>Strip</span></label>
+                    <label><input type="radio" name="layout" value="grid"><span>Grid</span></label>
+                </fieldset>
+
+                <fieldset class="choice" id="filter-choice">
+                    <legend>Filter</legend>
+                    <label><input type="radio" name="filter" value="none" checked><span>Natural</span></label>
+                    <label><input type="radio" name="filter" value="bw"><span>B&amp;W</span></label>
+                    <label><input type="radio" name="filter" value="vintage"><span>Vintage</span></label>
+                    <label><input type="radio" name="filter" value="warm"><span>Warm</span></label>
+                    <label><input type="radio" name="filter" value="cool"><span>Cool</span></label>
+                    <label><input type="radio" name="filter" value="pop"><span>Pop</span></label>
+                </fieldset>
+
+                <div class="shoot-row">
+                    <button type="button" class="shutter" id="btn-shoot" disabled>
+                        <span class="shutter-label">Take 4 photos</span>
+                    </button>
+                    <div class="small-opts">
+                        <label class="select-label">Timer
+                            <select id="timer">
+                                <option value="3" selected>3 s</option>
+                                <option value="5">5 s</option>
+                                <option value="10">10 s</option>
+                            </select>
+                        </label>
+                        <label class="check"><input type="checkbox" id="mirror" checked> Mirror</label>
+                        <label class="check"><input type="checkbox" id="sound" checked> Sound</label>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <aside class="tray" aria-label="Your photos">
+            <h2 class="tray-title">Your photos</h2>
+            <ol class="slots" id="slots">
+                <li class="slot"><span class="slot-empty">1</span></li>
+                <li class="slot"><span class="slot-empty">2</span></li>
+                <li class="slot"><span class="slot-empty">3</span></li>
+                <li class="slot"><span class="slot-empty">4</span></li>
+            </ol>
+            <p class="tray-hint" id="tray-hint">Your 4 shots drop in here.</p>
+        </aside>
+    </main>
+
+    <section class="result" id="result" aria-labelledby="result-title" hidden>
+        <div class="result-preview">
+            <canvas id="output" aria-label="Your finished photo strip"></canvas>
+        </div>
+
+        <div class="result-panel">
+            <h2 id="result-title" tabindex="-1">Your strip is ready</h2>
+            <p class="result-sub">Change the look, then save it. Tap a photo below to retake just that one.</p>
+
+            <fieldset class="choice" id="layout-choice-2">
+                <legend>Layout</legend>
+                <label><input type="radio" name="layout2" value="strip" checked><span>Strip</span></label>
+                <label><input type="radio" name="layout2" value="grid"><span>Grid</span></label>
+            </fieldset>
+
+            <fieldset class="choice" id="frame-choice">
+                <legend>Frame</legend>
+                <label><input type="radio" name="frame" value="paper" checked><span class="swatch" style="--sw:#ffffff"></span><span>Paper</span></label>
+                <label><input type="radio" name="frame" value="flash"><span class="swatch" style="--sw:#ffd23f"></span><span>Flash</span></label>
+                <label><input type="radio" name="frame" value="booth"><span class="swatch" style="--sw:#1d5654"></span><span>Booth</span></label>
+                <label><input type="radio" name="frame" value="rose"><span class="swatch" style="--sw:#f4a7b9"></span><span>Rose</span></label>
+                <label><input type="radio" name="frame" value="ink"><span class="swatch" style="--sw:#1a1d29"></span><span>Ink</span></label>
+            </fieldset>
+
+            <fieldset class="choice" id="filter-choice-2">
+                <legend>Filter</legend>
+                <label><input type="radio" name="filter2" value="none" checked><span>Natural</span></label>
+                <label><input type="radio" name="filter2" value="bw"><span>B&amp;W</span></label>
+                <label><input type="radio" name="filter2" value="vintage"><span>Vintage</span></label>
+                <label><input type="radio" name="filter2" value="warm"><span>Warm</span></label>
+                <label><input type="radio" name="filter2" value="cool"><span>Cool</span></label>
+                <label><input type="radio" name="filter2" value="pop"><span>Pop</span></label>
+            </fieldset>
+
+            <label class="field"><span>Caption <span class="field-note">(optional)</span></span>
+                <input type="text" id="caption" maxlength="28" placeholder="e.g. Barkada night out" autocomplete="off">
+            </label>
+            <label class="check"><input type="checkbox" id="show-date" checked> Show the date</label>
+
+            <div class="result-actions">
+                <button type="button" class="btn btn-flash" id="btn-download">Save photo strip</button>
+                <button type="button" class="btn btn-ghost" id="btn-share" hidden>Share</button>
+                <button type="button" class="btn btn-ghost" id="btn-again">Start over</button>
+            </div>
+            <p class="saved-msg" id="saved-msg" role="status" hidden></p>
+        </div>
+    </section>
+
+    <input type="file" id="upload" accept="image/*" multiple hidden>
+
+    <footer class="foot">
+        <p>Your photos stay on this device. Nothing is uploaded or stored anywhere.</p>
+        <p>Made by Genesis Florento. <a href="https://github.com/" id="repo-link">See the code on GitHub</a></p>
+    </footer>
+
+    <script src="js/filters.js"></script>
+    <script src="js/compose.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
