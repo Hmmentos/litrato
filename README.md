@@ -4,6 +4,12 @@
 
 Hosted by an orange cat and a frog in a pink pixel night city. 🐱🐸
 
+**▶ Try it live: [milesues-booth.vercel.app](https://milesues-booth.vercel.app)**
+
+<p align="center">
+  <img src="screenshot.jpg" alt="Milesue's Booth on a phone: a 4 cut photo strip with stickers in the pink pixel night city" width="320">
+</p>
+
 ## Features
 
 - **Pick a layout:** Polaroid, 2 cut, 4 cut strip, 2 × 2, 6 cut or 8 cut. The booth takes **2 extra shots** so you can choose your best ones.
