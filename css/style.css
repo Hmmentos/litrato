@@ -536,6 +536,8 @@ label.px-btn { justify-self: start; }
 .layout-icon.is-grid4 { grid-template-columns: repeat(2, 56px); }
 .layout-icon.is-polaroid { padding: 8px 8px 30px; grid-template-columns: 74px; }
 .layout-icon.is-polaroid i { aspect-ratio: 1; }
+.layout-icon.is-slim4 { grid-template-columns: 36px; gap: 0; padding: 4px; }
+.layout-icon.is-slim4 i { aspect-ratio: 4 / 5; box-shadow: inset 0 -1px 0 rgba(27, 15, 59, 0.25); }
 .layout-card[aria-checked="true"] .layout-icon i { background: var(--hot); }
 
 /* The chosen layout inside settings. */
@@ -593,6 +595,7 @@ label.px-btn { justify-self: start; }
     .layout-icon.is-strip4 { grid-template-columns: 34px; }
     .layout-icon.is-grid4 { grid-template-columns: repeat(2, 42px); }
     .layout-icon.is-polaroid { grid-template-columns: 58px; padding-bottom: 24px; }
+    .layout-icon.is-slim4 { grid-template-columns: 28px; }
 }
 
 /* ---------- get.html (the page friends open from the QR code) ---------- */
