@@ -1,29 +1,41 @@
 // js/app.js
-// Litrato: a free photobooth that runs fully in the browser.
-// Flow: turn on camera -> take 4 photos (countdown + flash) -> strip -> save.
+// Milesue's Booth: a free 8-bit photobooth that runs fully in the browser.
+// Flow: pick 1-8 photos -> camera takes that many + 2 extra -> pick your
+// best -> add stickers -> save. Nothing is uploaded anywhere.
 
 const $ = selector => document.querySelector(selector);
+const EXTRA_SHOTS = 2;
 
 const els = {
     video: $('#video'),
     count: $('#count'),
     flash: $('#flash'),
+    screenLight: $('#screen-light'),
     camStart: $('#cam-start'),
     camError: $('#cam-error'),
     btnCamera: $('#btn-camera'),
     btnShoot: $('#btn-shoot'),
-    shootLabel: $('#btn-shoot .shutter-label'),
+    shootLabel: $('#shoot-label'),
+    btnSwitch: $('#btn-switch'),
     status: $('#status'),
-    slots: $('#slots'),
-    trayHint: $('#tray-hint'),
+    shots: $('#shots'),
+    countNote: $('#count-note'),
     timer: $('#timer'),
+    flashlight: $('#flashlight'),
     mirror: $('#mirror'),
     sound: $('#sound'),
     upload: $('#upload'),
+    pick: $('#pick'),
+    pickTitle: $('#pick-title'),
+    pickGrid: $('#pick-grid'),
+    btnUse: $('#btn-use'),
+    btnRetakeAll: $('#btn-retake-all'),
     result: $('#result'),
+    resultTitle: $('#result-title'),
     output: $('#output'),
     caption: $('#caption'),
     showDate: $('#show-date'),
+    showMascots: $('#show-mascots'),
     btnDownload: $('#btn-download'),
     btnShare: $('#btn-share'),
     btnAgain: $('#btn-again'),
@@ -32,20 +44,29 @@ const els = {
 
 const state = {
     stream: null,
-    shots: [null, null, null, null],   // 4 canvases, each SHOT_W x SHOT_H
-    layout: 'strip',
+    facing: 'user',
+    torch: false,              // camera has a real torch
+    count: 4,                  // photos on the card (from the layout)
+    shots: [],                 // everything taken (count + 2)
+    picked: [],                // indexes into shots, in strip order
+    layout: 'strip4',
     filter: 'none',
-    frame: 'paper',
+    frame: 'bubblegum',
+    customColor: '#ff8fc7',    // for the "Any color" frame
     busy: false,
     stopRequested: false,
-    uploadTarget: null,                // which slot an upload replaces (null = fill empty slots)
     takenAt: null,
+    base: document.createElement('canvas'),   // strip without stickers
 };
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-// ---------- Sound (tiny beeps made in the browser, no files) ----------
+function say(text) {
+    els.status.textContent = text;
+}
+
+// ---------- Sounds (made in the browser, no files) ----------
 let audio = null;
 function audioContext() {
     if (!audio) {
@@ -55,14 +76,16 @@ function audioContext() {
     if (audio && audio.state === 'suspended') audio.resume();
     return audio;
 }
-function beep(frequency = 880, duration = 0.07) {
+// 8-bit style square-wave beep.
+function blip(frequency = 660, duration = 0.08) {
     if (!els.sound.checked) return;
     const ctx = audioContext();
     if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+    osc.type = 'square';
     osc.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.setValueAtTime(0.06, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
     osc.connect(gain).connect(ctx.destination);
     osc.start();
@@ -70,21 +93,8 @@ function beep(frequency = 880, duration = 0.07) {
 }
 function shutterSound() {
     if (!els.sound.checked) return;
-    const ctx = audioContext();
-    if (!ctx) return;
-    const length = Math.floor(ctx.sampleRate * 0.14);
-    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < length; i += 1) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3);
-    const source = ctx.createBufferSource();
-    const filter = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
-    filter.type = 'bandpass';
-    filter.frequency.value = 2400;
-    gain.gain.value = 0.5;
-    source.buffer = buffer;
-    source.connect(filter).connect(gain).connect(ctx.destination);
-    source.start();
+    blip(1320, 0.05);
+    setTimeout(() => blip(1760, 0.09), 60);
 }
 
 // ---------- Camera ----------
@@ -104,6 +114,11 @@ function cameraErrorText(error) {
     }
 }
 
+function stopStream() {
+    if (state.stream) state.stream.getTracks().forEach(track => track.stop());
+    state.stream = null;
+}
+
 async function startCamera() {
     els.camError.hidden = true;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -111,10 +126,11 @@ async function startCamera() {
         return;
     }
     els.btnCamera.disabled = true;
-    els.btnCamera.textContent = 'Starting camera…';
+    els.btnCamera.textContent = 'Starting…';
     try {
+        stopStream();
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } },
+            video: { facingMode: state.facing, width: { ideal: 1280 }, height: { ideal: 960 } },
             audio: false,
         });
         state.stream = stream;
@@ -122,7 +138,12 @@ async function startCamera() {
         await els.video.play().catch(() => {});
         els.camStart.hidden = true;
         els.btnShoot.disabled = false;
-        setStatus('Camera is on. Press "Take 4 photos" when you are ready.');
+        const track = stream.getVideoTracks()[0];
+        const caps = track && track.getCapabilities ? track.getCapabilities() : {};
+        state.torch = Boolean(caps && caps.torch);
+        const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+        els.btnSwitch.hidden = devices.filter(device => device.kind === 'videoinput').length < 2;
+        say(`Camera on! Press Start when you're ready.`);
     } catch (error) {
         console.error(error);
         showCameraError(cameraErrorText(error));
@@ -132,16 +153,20 @@ async function startCamera() {
     }
 }
 
+async function switchCamera() {
+    if (state.busy) return;
+    state.facing = state.facing === 'user' ? 'environment' : 'user';
+    els.mirror.checked = state.facing === 'user';
+    applyMirror();
+    await startCamera();
+}
+
 function showCameraError(text) {
     els.camError.textContent = text;
     els.camError.hidden = false;
 }
 
-function setStatus(text) {
-    els.status.textContent = text;
-}
-
-// Grabs the current video frame, center-cropped to 4:3.
+// Current video frame, center-cropped to 4:3.
 function captureFrame() {
     const video = els.video;
     const vw = video.videoWidth;
@@ -151,8 +176,6 @@ function captureFrame() {
     let sw = vw;
     let sh = vw / target;
     if (sh > vh) { sh = vh; sw = vh * target; }
-    const sx = (vw - sw) / 2;
-    const sy = (vh - sh) / 2;
     const canvas = document.createElement('canvas');
     canvas.width = SHOT_W;
     canvas.height = SHOT_H;
@@ -161,8 +184,29 @@ function captureFrame() {
         ctx.translate(SHOT_W, 0);
         ctx.scale(-1, 1);
     }
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, SHOT_W, SHOT_H);
+    ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, SHOT_W, SHOT_H);
     return canvas;
+}
+
+// Flash light: the phone's torch when there is one, otherwise the screen
+// turns bright for a moment to light up your face.
+async function withFlashLight(take) {
+    if (!els.flashlight.checked) return take();
+    const track = state.stream && state.stream.getVideoTracks()[0];
+    if (state.torch && track) {
+        try {
+            await track.applyConstraints({ advanced: [{ torch: true }] });
+            await sleep(250);
+            const frame = take();
+            track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+            return frame;
+        } catch (error) { /* fall back to the screen light */ }
+    }
+    els.screenLight.classList.add('on');
+    await sleep(320);
+    const frame = take();
+    setTimeout(() => els.screenLight.classList.remove('on'), 120);
+    return frame;
 }
 
 // ---------- Countdown + shooting ----------
@@ -171,9 +215,9 @@ async function countdown(seconds) {
         if (state.stopRequested) return false;
         els.count.textContent = String(n);
         els.count.classList.remove('tick');
-        void els.count.offsetWidth;          // restart the animation
+        void els.count.offsetWidth;
         els.count.classList.add('tick');
-        beep(n === 1 ? 1175 : 880);
+        blip(n === 1 ? 990 : 660);
         await sleep(1000);
     }
     els.count.textContent = '';
@@ -187,131 +231,139 @@ function fireFlash() {
     els.flash.classList.add('go');
 }
 
-async function shoot(indices) {
+const POSES = ['Smile!', 'Peace sign!', 'Silly face!', 'Heart hands!', 'Look cute!', 'Wacky pose!', 'Big laugh!', 'Wink!', 'Pout!', 'Last one, best one!'];
+
+async function shootAll() {
     if (state.busy || !state.stream) return;
+    const total = state.count + EXTRA_SHOTS;
     state.busy = true;
     state.stopRequested = false;
+    state.shots = [];
+    state.picked = [];
+    hideAfterShooting();
+    renderShotTray(total);
     setShootingUi(true);
     const seconds = Number(els.timer.value) || 3;
     let completed = true;
 
-    for (let i = 0; i < indices.length; i += 1) {
-        const index = indices[i];
-        setStatus(indices.length > 1
-            ? `Photo ${i + 1} of ${indices.length}. Get ready!`
-            : `Retaking photo ${index + 1}. Get ready!`);
-        markSlot(index, 'next');
+    for (let i = 0; i < total; i += 1) {
+        say(`Photo ${i + 1} of ${total}. ${POSES[i % POSES.length]}`);
+        markNextSlot(i);
         const go = await countdown(seconds);
         if (!go) { completed = false; break; }
-        const frame = captureFrame();
+        const frame = await withFlashLight(captureFrame);
         fireFlash();
         if (frame) {
-            state.shots[index] = frame;
-            renderSlot(index);
+            state.shots.push(frame);
+            renderShotTray(total);
         }
-        await sleep(reduceMotion ? 300 : 900);
+        await sleep(reduceMotion ? 300 : 800);
     }
 
     els.count.textContent = '';
     state.busy = false;
     setShootingUi(false);
-    clearSlotMarks();
+    markNextSlot(-1);
 
     if (!completed) {
-        setStatus('Stopped. Press "Take 4 photos" to try again.');
+        say('Stopped. Press Start to try again.');
         return;
     }
-    if (state.shots.every(Boolean)) {
-        state.takenAt = new Date();
-        await showResult();
-    }
+    state.takenAt = new Date();
+    showPicker();
 }
 
 function setShootingUi(shooting) {
     els.btnShoot.classList.toggle('is-stop', shooting);
-    els.shootLabel.textContent = shooting ? 'Stop' : 'Take 4 photos';
-    document.querySelectorAll('.controls input, .controls select').forEach(input => {
-        input.disabled = shooting;
-    });
-    els.slots.classList.toggle('is-busy', shooting);
+    els.shootLabel.textContent = shooting ? 'Stop' : 'Start';
+    document.querySelectorAll('.set-body input, .set-body select').forEach(input => { input.disabled = shooting; });
+    els.btnSwitch.disabled = shooting;
 }
 
-// ---------- Photo slots (the tray) ----------
-function renderSlot(index) {
-    const slot = els.slots.children[index];
-    const shot = state.shots[index];
-    slot.replaceChildren();
-    if (!shot) {
-        const empty = document.createElement('span');
-        empty.className = 'slot-empty';
-        empty.textContent = String(index + 1);
-        slot.appendChild(empty);
+function thumbCanvas(shot, w = 160) {
+    const thumb = document.createElement('canvas');
+    thumb.width = w;
+    thumb.height = Math.round(w * 0.75);
+    thumb.getContext('2d').drawImage(shot, 0, 0, thumb.width, thumb.height);
+    thumb.style.filter = FILTERS[state.filter].css;
+    return thumb;
+}
+
+function renderShotTray(total) {
+    els.shots.replaceChildren();
+    for (let i = 0; i < total; i += 1) {
+        const li = document.createElement('li');
+        li.className = 'shot';
+        if (state.shots[i]) li.appendChild(thumbCanvas(state.shots[i], 120));
+        else li.textContent = String(i + 1);
+        els.shots.appendChild(li);
+    }
+}
+
+function markNextSlot(index) {
+    [...els.shots.children].forEach((li, i) => li.classList.toggle('is-next', i === index));
+}
+
+// ---------- Pick your best ----------
+function showPicker() {
+    if (state.shots.length <= state.count) {
+        state.picked = state.shots.map((_, i) => i);
+        showResult();
         return;
     }
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'slot-photo';
-    button.setAttribute('aria-label', `Retake photo ${index + 1}`);
-    const thumb = document.createElement('canvas');
-    thumb.width = 240;
-    thumb.height = 180;
-    thumb.getContext('2d').drawImage(shot, 0, 0, 240, 180);
-    thumb.style.filter = FILTERS[state.filter].css;
-    const tag = document.createElement('span');
-    tag.className = 'slot-retake';
-    tag.textContent = 'Retake';
-    button.append(thumb, tag);
-    button.addEventListener('click', () => retake(index));
-    slot.appendChild(button);
-    updateTrayHint();
+    if (!state.picked.length) state.picked = state.shots.slice(0, state.count).map((_, i) => i);
+    els.pickTitle.textContent = state.count === 1 ? 'Pick your best shot' : `Pick your best ${state.count}`;
+    renderPicker();
+    els.pick.hidden = false;
+    els.result.hidden = true;
+    say(state.count === 1 ? 'Done! Now pick your best shot.' : `Done! Now pick your best ${state.count}.`);
+    els.pick.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    els.pickTitle.focus({ preventScroll: true });
 }
 
-function renderAllSlots() {
-    state.shots.forEach((_, index) => renderSlot(index));
-    updateTrayHint();
-}
-
-function markSlot(index, mark) {
-    clearSlotMarks();
-    els.slots.children[index]?.classList.add(`is-${mark}`);
-}
-
-function clearSlotMarks() {
-    [...els.slots.children].forEach(slot => slot.classList.remove('is-next'));
-}
-
-function updateTrayHint() {
-    const taken = state.shots.filter(Boolean).length;
-    els.trayHint.textContent = taken === 0
-        ? 'Your 4 shots drop in here.'
-        : taken < 4
-            ? `${taken} of 4 taken.`
-            : 'All 4 taken. Tap a photo to retake it.';
-}
-
-function retake(index) {
-    if (state.busy) return;
-    if (state.stream) {
-        document.getElementById('booth').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-        shoot([index]);
-    } else {
-        state.uploadTarget = index;
-        els.upload.multiple = false;
-        els.upload.click();
-    }
-}
-
-// ---------- Photos from the device (when there is no camera) ----------
-function loadImage(file) {
-    return new Promise((resolve, reject) => {
-        const url = URL.createObjectURL(file);
-        const image = new Image();
-        image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
-        image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not open that image.')); };
-        image.src = url;
+function renderPicker() {
+    els.pickGrid.replaceChildren();
+    state.shots.forEach((shot, i) => {
+        const li = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'pick-item';
+        const order = state.picked.indexOf(i);
+        button.classList.toggle('is-picked', order !== -1);
+        button.setAttribute('aria-pressed', String(order !== -1));
+        button.setAttribute('aria-label', order !== -1 ? `Photo ${i + 1}, picked as number ${order + 1}` : `Photo ${i + 1}, not picked`);
+        button.appendChild(thumbCanvas(shot, 320));
+        if (order !== -1) {
+            const badge = document.createElement('span');
+            badge.className = 'pick-badge';
+            badge.textContent = String(order + 1);
+            button.appendChild(badge);
+        }
+        button.addEventListener('click', () => togglePick(i));
+        li.appendChild(button);
+        els.pickGrid.appendChild(li);
     });
+    const ready = state.picked.length === state.count;
+    els.btnUse.disabled = !ready;
+    const left = state.count - state.picked.length;
+    els.btnUse.textContent = ready ? 'Use these photos' : `Pick ${left} more`;
 }
 
+function togglePick(index) {
+    const at = state.picked.indexOf(index);
+    if (at !== -1) {
+        state.picked.splice(at, 1);
+    } else if (state.picked.length < state.count) {
+        state.picked.push(index);
+    } else {
+        say(`You already picked ${state.count}. Tap one to remove it first.`);
+        blip(220, 0.12);
+        return;
+    }
+    renderPicker();
+}
+
+// ---------- Photos from the device ----------
 function imageToShot(image) {
     const canvas = document.createElement('canvas');
     canvas.width = SHOT_W;
@@ -327,31 +379,24 @@ function imageToShot(image) {
 async function handleUpload() {
     const files = [...els.upload.files].filter(file => file.type.startsWith('image/'));
     els.upload.value = '';
-    els.upload.multiple = true;
     if (!files.length) return;
-    try {
-        if (state.uploadTarget !== null) {
-            state.shots[state.uploadTarget] = imageToShot(await loadImage(files[0]));
-            renderSlot(state.uploadTarget);
-        } else {
-            for (const file of files) {
-                const empty = state.shots.findIndex(shot => !shot);
-                if (empty === -1) break;
-                state.shots[empty] = imageToShot(await loadImage(file));
-                renderSlot(empty);
-            }
+    const max = state.count + EXTRA_SHOTS;
+    for (const file of files) {
+        if (state.shots.length >= max) break;
+        try {
+            state.shots.push(imageToShot(await loadImageFile(file)));
+        } catch (error) {
+            showCameraError('One of those files could not be opened. Try a PNG or JPG.');
         }
-    } catch (error) {
-        showCameraError(error.message);
     }
-    state.uploadTarget = null;
-    const missing = state.shots.filter(shot => !shot).length;
-    if (missing) {
-        setStatus(`${4 - missing} of 4 photos added. Add ${missing} more.`);
-    } else {
-        state.takenAt = state.takenAt || new Date();
-        await showResult();
+    renderShotTray(Math.max(state.count, state.shots.length));
+    if (state.shots.length < state.count) {
+        say(`${state.shots.length} of ${state.count} photos added. Add ${state.count - state.shots.length} more.`);
+        return;
     }
+    state.takenAt = state.takenAt || new Date();
+    state.picked = [];
+    showPicker();
 }
 
 // ---------- Result ----------
@@ -360,12 +405,16 @@ async function fontsReady() {
     try {
         await Promise.race([
             Promise.all([
-                document.fonts.load('76px "Bungee"'),
-                document.fonts.load('600 34px "Bricolage Grotesque"'),
+                document.fonts.load('40px "Press Start 2P"'),
+                document.fonts.load('600 32px "Pixelify Sans"'),
             ]),
             sleep(1500),
         ]);
-    } catch (error) { /* fall back to system fonts */ }
+    } catch (error) { /* system fonts are fine */ }
+}
+
+function pickedShots() {
+    return state.picked.map(i => state.shots[i]);
 }
 
 function currentOptions() {
@@ -373,44 +422,58 @@ function currentOptions() {
         layout: state.layout,
         filter: state.filter,
         frame: state.frame,
+        customColor: state.customColor,
         caption: els.caption.value,
         showDate: els.showDate.checked,
+        mascots: els.showMascots.checked,
         date: state.takenAt || new Date(),
     };
 }
 
-function redraw() {
-    if (!state.shots.every(Boolean)) return;
-    composeStrip(els.output, state.shots, currentOptions());
-    els.output.classList.toggle('is-grid', state.layout === 'grid');
+function rebuildStrip() {
+    if (!state.picked.length) return;
+    composeStrip(state.base, pickedShots(), currentOptions());
+    els.output.classList.toggle('is-grid', LAYOUTS[state.layout].cols > 1 && state.picked.length > 1);
+    redrawStickers();
 }
 
 async function showResult() {
     await fontsReady();
-    redraw();
+    rebuildStrip();
+    els.pick.hidden = true;
     els.savedMsg.hidden = true;
     els.result.hidden = false;
-    setStatus('Done! Your strip is ready below.');
+    say('Your strip is ready! Add stickers, then save it.');
     els.result.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-    els.result.querySelector('h2').focus({ preventScroll: true });
+    els.resultTitle.focus({ preventScroll: true });
     updateShareButton();
+    redrawStickers();
+}
+
+function hideAfterShooting() {
+    els.pick.hidden = true;
+    els.result.hidden = true;
+    clearStickers();
 }
 
 function fileName() {
     const d = state.takenAt || new Date();
     const pad = n => String(n).padStart(2, '0');
-    return `litrato-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.png`;
+    return `milesues-booth-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.png`;
 }
 
-function outputBlob() {
+// The saved image: the strip plus stickers, without the selection box.
+function exportBlob() {
+    const out = document.createElement('canvas');
+    renderWithStickers(out, state.base, Stickers.list, null);
     return new Promise((resolve, reject) => {
-        els.output.toBlob(blob => (blob ? resolve(blob) : reject(new Error('Could not create the image.'))), 'image/png');
+        out.toBlob(blob => (blob ? resolve(blob) : reject(new Error('no blob'))), 'image/png');
     });
 }
 
 async function download() {
     try {
-        const blob = await outputBlob();
+        const blob = await exportBlob();
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -421,6 +484,8 @@ async function download() {
         setTimeout(() => URL.revokeObjectURL(url), 4000);
         els.savedMsg.textContent = `Saved as ${fileName()}. Check your Downloads.`;
         els.savedMsg.hidden = false;
+        say('Saved! Want another round? Press Start.');
+        blip(880, 0.08); setTimeout(() => blip(1175, 0.12), 90);
     } catch (error) {
         els.savedMsg.textContent = 'The photo strip could not be saved. Try again.';
         els.savedMsg.hidden = false;
@@ -438,29 +503,91 @@ function updateShareButton() {
 
 async function share() {
     try {
-        const blob = await outputBlob();
-        const file = new File([blob], fileName(), { type: 'image/png' });
-        await navigator.share({ files: [file], title: 'My Litrato photo strip' });
+        const blob = await exportBlob();
+        await navigator.share({ files: [new File([blob], fileName(), { type: 'image/png' })], title: "My Milesue's Booth strip" });
     } catch (error) {
-        if (error && error.name === 'AbortError') return;   // user closed the share sheet
+        if (error && error.name === 'AbortError') return;
         els.savedMsg.textContent = 'Sharing did not work here. Use "Save photo strip" instead.';
         els.savedMsg.hidden = false;
     }
 }
 
 function startOver() {
-    state.shots = [null, null, null, null];
+    state.shots = [];
+    state.picked = [];
     state.takenAt = null;
     els.caption.value = '';
-    els.result.hidden = true;
-    renderAllSlots();
-    setStatus(state.stream ? 'Ready for a new set. Press "Take 4 photos".' : '');
+    hideAfterShooting();
+    renderShotTray(state.count + EXTRA_SHOTS);
+    say(state.stream ? 'Ready for another round! Press Start.' : 'Hi! Pick how many photos, then press Start.');
     window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
-// ---------- Options (layout / filter / frame) ----------
+// ---------- Options ----------
 function setRadioGroup(name, value) {
     document.querySelectorAll(`input[name="${name}"]`).forEach(input => { input.checked = input.value === value; });
+}
+
+// ---------- Layout picker ----------
+// A small drawing of each layout, made of boxes.
+function layoutIcon(key) {
+    const layout = LAYOUTS[key];
+    const icon = document.createElement('span');
+    icon.className = `layout-icon is-${key}`;
+    icon.style.setProperty('--cols', Math.min(layout.cols, layout.count));
+    for (let i = 0; i < layout.count; i += 1) {
+        const cell = document.createElement('i');
+        icon.appendChild(cell);
+    }
+    return icon;
+}
+
+function renderLayoutCards() {
+    const host = document.getElementById('layout-cards');
+    host.replaceChildren();
+    Object.entries(LAYOUTS).forEach(([key, layout]) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'layout-card';
+        card.setAttribute('role', 'radio');
+        card.setAttribute('aria-checked', String(key === state.layout));
+        card.dataset.layout = key;
+        const name = document.createElement('span');
+        name.className = 'layout-name';
+        name.textContent = layout.label;
+        const note = document.createElement('span');
+        note.className = 'layout-note';
+        note.textContent = layout.note;
+        card.append(layoutIcon(key), name, note);
+        card.addEventListener('click', () => chooseLayout(key));
+        host.appendChild(card);
+    });
+}
+
+function chooseLayout(key) {
+    if (!LAYOUTS[key] || state.busy) return;
+    const changed = key !== state.layout;
+    state.layout = key;
+    state.count = LAYOUTS[key].count;
+    renderLayoutCards();
+    const layout = LAYOUTS[key];
+    document.getElementById('chosen-name').textContent = layout.label;
+    document.getElementById('chosen-icon').replaceChildren(layoutIcon(key));
+    const total = state.count + EXTRA_SHOTS;
+    els.countNote.textContent = `Takes ${total} shots, so you can pick your best ${state.count === 1 ? 'one' : state.count}.`;
+    if (changed && state.shots.length) startOver();
+    else renderShotTray(total);
+    document.getElementById('layout-pick').hidden = true;
+    document.getElementById('booth').hidden = false;
+    document.getElementById('booth').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    say(state.stream ? 'Nice choice! Press Start when you are ready.' : 'Nice choice! Now turn on the camera.');
+}
+
+function showLayoutPicker() {
+    if (state.busy) return;
+    document.getElementById('layout-pick').hidden = false;
+    document.getElementById('layout-pick').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    document.getElementById('layout-title').focus({ preventScroll: true });
 }
 
 function applyFilter(value) {
@@ -469,17 +596,8 @@ function applyFilter(value) {
     setRadioGroup('filter', value);
     setRadioGroup('filter2', value);
     els.video.style.filter = FILTERS[value].css;
-    els.slots.querySelectorAll('canvas').forEach(thumb => { thumb.style.filter = FILTERS[value].css; });
-    redraw();
-}
-
-function applyLayout(value) {
-    if (!LAYOUTS[value]) return;
-    state.layout = value;
-    setRadioGroup('layout', value);
-    setRadioGroup('layout2', value);
-    els.slots.classList.toggle('is-grid', value === 'grid');
-    redraw();
+    document.querySelectorAll('.shots canvas, .pick-grid canvas').forEach(c => { c.style.filter = FILTERS[value].css; });
+    rebuildStrip();
 }
 
 function applyMirror() {
@@ -488,42 +606,60 @@ function applyMirror() {
 
 // ---------- Wire up ----------
 els.btnCamera.addEventListener('click', () => { audioContext(); startCamera(); });
+els.btnSwitch.addEventListener('click', switchCamera);
 els.btnShoot.addEventListener('click', () => {
     audioContext();
     if (state.busy) { state.stopRequested = true; return; }
-    if (state.shots.some(Boolean)) {
-        state.shots = [null, null, null, null];
-        els.result.hidden = true;
-        renderAllSlots();
-    }
-    shoot([0, 1, 2, 3]);
+    shootAll();
+});
+els.btnUse.addEventListener('click', showResult);
+document.getElementById('btn-change-layout').addEventListener('click', showLayoutPicker);
+els.btnRetakeAll.addEventListener('click', () => {
+    document.getElementById('booth').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    if (state.stream) shootAll();
+    else startOver();
 });
 els.upload.addEventListener('change', handleUpload);
-document.querySelector('label[for="upload"]').addEventListener('click', () => {
-    state.uploadTarget = null;
-    els.upload.multiple = true;
-});
 
 document.addEventListener('change', event => {
     const input = event.target;
     if (input.name === 'filter' || input.name === 'filter2') applyFilter(input.value);
-    if (input.name === 'layout' || input.name === 'layout2') applyLayout(input.value);
-    if (input.name === 'frame') { state.frame = input.value; redraw(); }
+    if (input.name === 'frame') { state.frame = input.value; rebuildStrip(); }
     if (input === els.mirror) applyMirror();
-    if (input === els.showDate) redraw();
+    if (input === els.showDate || input === els.showMascots) rebuildStrip();
 });
-els.caption.addEventListener('input', redraw);
+els.caption.addEventListener('input', rebuildStrip);
+
+// "Any color" frame: picking a color also selects it.
+const frameColor = document.getElementById('frame-color');
+function useCustomColor() {
+    state.customColor = frameColor.value;
+    state.frame = 'custom';
+    setRadioGroup('frame', 'custom');
+    document.getElementById('custom-swatch').style.setProperty('--sw', frameColor.value);
+    document.getElementById('custom-swatch').classList.add('is-set');
+    rebuildStrip();
+}
+frameColor.addEventListener('input', useCustomColor);
+frameColor.addEventListener('change', useCustomColor);
 els.btnDownload.addEventListener('click', download);
 els.btnShare.addEventListener('click', share);
 els.btnAgain.addEventListener('click', startOver);
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && state.busy) state.stopRequested = true;
 });
-window.addEventListener('pagehide', () => {
-    if (state.stream) state.stream.getTracks().forEach(track => track.stop());
-});
+window.addEventListener('pagehide', stopStream);
 
+// ---------- Start ----------
+buildScene($('#scene'));
+$('#title-cat').appendChild(spriteImg('cat', 4, ''));
+$('#title-frog').appendChild(spriteImg('frog', 4, ''));
+$('#peek-cat').appendChild(spriteImg('cat', 4, ''));
+$('#buddy-frog').appendChild(spriteImg('frog', 4, ''));
 applyMirror();
 applyFilter('none');
-applyLayout('strip');
-renderAllSlots();
+renderLayoutCards();
+document.getElementById('chosen-icon').replaceChildren(layoutIcon(state.layout));
+renderShotTray(state.count + EXTRA_SHOTS);
+setupQr(exportBlob, () => say('Scan the QR code to save the strip on your phone!'));
+fontsReady().then(() => setupStickers(els.output, () => (state.picked.length ? state.base : null)));

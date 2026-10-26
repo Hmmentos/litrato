@@ -3,43 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Litrato · Free online photobooth</title>
-    <meta name="description" content="A free photobooth in your browser. Take 4 photos, get a photo strip, and save it with no fees and no watermark. Your photos never leave your device.">
-    <meta name="theme-color" content="#1d5654">
-    <link rel="preload" href="fonts/bungee.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
+    <title>Milesue's Booth · Free 8-bit photobooth</title>
+    <meta name="description" content="A free 8-bit photobooth in your browser. Pick 1 to 8 photos, pose, add stickers, and save your strip with no watermark. Your photos never leave your device.">
+    <meta name="theme-color" content="#2a1a5e">
+    <link rel="preload" href="fonts/press-start-2p.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/pixelify-sans.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d5654'/%3E%3Crect x='20' y='8' width='24' height='48' rx='3' fill='%23fff'/%3E%3Crect x='24' y='12' width='16' height='10' fill='%23ffd23f'/%3E%3Crect x='24' y='26' width='16' height='10' fill='%23ffd23f'/%3E%3Crect x='24' y='40' width='16' height='10' fill='%23ffd23f'/%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%23ff4f9a'/%3E%3Crect x='3' y='2' width='10' height='12' fill='%23fff'/%3E%3Crect x='5' y='4' width='6' height='3' fill='%232a1a5e'/%3E%3Crect x='5' y='9' width='6' height='3' fill='%232a1a5e'/%3E%3C/svg%3E">
 </head>
 <body>
-    <header class="marquee">
-        <h1 class="logo">Litrato</h1>
-        <p class="tagline">Take 4 photos, get your strip, save it free. No watermark.</p>
+    <div class="scene" id="scene" aria-hidden="true"></div>
+
+    <header class="title">
+        <span class="title-sprite" id="title-cat"></span>
+        <div>
+            <h1 class="logo">Milesue's Booth</h1>
+        </div>
+        <span class="title-sprite" id="title-frog"></span>
     </header>
 
-    <main class="booth" id="booth">
-        <section class="stage" aria-label="Camera">
-            <div class="window" id="window">
-                <video id="video" autoplay playsinline muted></video>
-                <div class="count" id="count" aria-hidden="true"></div>
-                <div class="flash" id="flash" aria-hidden="true"></div>
+    <section class="win layout-win" id="layout-pick" aria-labelledby="layout-title">
+        <div class="win-bar"><span>choose_layout.exe</span><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+        <div class="layout-body">
+            <h2 id="layout-title" tabindex="-1">Pick a layout</h2>
+            <p class="layout-sub">Tap one. The booth takes 2 extra shots so you can pick your best.</p>
+            <div class="layout-cards" id="layout-cards" role="radiogroup" aria-label="Layout"></div>
+        </div>
+    </section>
 
-                <div class="cam-start" id="cam-start">
-                    <p>The booth needs your camera.</p>
-                    <button type="button" class="btn btn-flash" id="btn-camera">Turn on camera</button>
-                    <label class="link-btn" for="upload">or use photos from your device</label>
-                    <p class="cam-error" id="cam-error" role="alert" hidden></p>
+    <main class="booth" id="booth" hidden>
+        <section class="win cam-win" aria-label="Camera">
+            <div class="win-bar"><span>milesue_cam.exe</span><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+            <div class="cam-body">
+                <span class="peek-cat" id="peek-cat" aria-hidden="true"></span>
+                <div class="window" id="window">
+                    <video id="video" autoplay playsinline muted></video>
+                    <div class="count" id="count" aria-hidden="true"></div>
+                    <div class="flash" id="flash" aria-hidden="true"></div>
+                    <div class="cam-start" id="cam-start">
+                        <p>Ready to play? The booth needs your camera.</p>
+                        <button type="button" class="px-btn px-btn-pink" id="btn-camera">Turn on camera</button>
+                        <label class="link-btn" for="upload">or use photos from your device</label>
+                        <p class="cam-error" id="cam-error" role="alert" hidden></p>
+                    </div>
+                </div>
+
+                <ol class="shots" id="shots" aria-label="Photos taken"></ol>
+
+                <div class="buddy">
+                    <span class="buddy-frog" id="buddy-frog" aria-hidden="true"></span>
+                    <p class="bubble" id="status" aria-live="polite">Hi! Pick how many photos, then press Start.</p>
                 </div>
             </div>
+        </section>
 
-            <p class="status" id="status" aria-live="polite"></p>
-
-            <div class="controls">
-                <fieldset class="choice" id="layout-choice">
-                    <legend>Layout</legend>
-                    <label><input type="radio" name="layout" value="strip" checked><span>Strip</span></label>
-                    <label><input type="radio" name="layout" value="grid"><span>Grid</span></label>
-                </fieldset>
+        <section class="win set-win" aria-label="Settings">
+            <div class="win-bar"><span>settings.exe</span><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+            <div class="set-body">
+                <div class="chosen-layout">
+                    <span class="chosen-icon" id="chosen-icon" aria-hidden="true"></span>
+                    <div>
+                        <p class="chosen-name" id="chosen-name">4 cut</p>
+                        <p class="note" id="count-note">Takes 6 shots, so you can pick your best 4.</p>
+                    </div>
+                    <button type="button" class="px-btn px-btn-small" id="btn-change-layout">Change</button>
+                </div>
 
                 <fieldset class="choice" id="filter-choice">
                     <legend>Filter</legend>
@@ -51,94 +79,158 @@
                     <label><input type="radio" name="filter" value="pop"><span>Pop</span></label>
                 </fieldset>
 
-                <div class="shoot-row">
-                    <button type="button" class="shutter" id="btn-shoot" disabled>
-                        <span class="shutter-label">Take 4 photos</span>
-                    </button>
-                    <div class="small-opts">
-                        <label class="select-label">Timer
-                            <select id="timer">
-                                <option value="3" selected>3 s</option>
-                                <option value="5">5 s</option>
-                                <option value="10">10 s</option>
-                            </select>
-                        </label>
-                        <label class="check"><input type="checkbox" id="mirror" checked> Mirror</label>
-                        <label class="check"><input type="checkbox" id="sound" checked> Sound</label>
-                    </div>
+                <div class="toggles">
+                    <label class="select-label">Timer
+                        <select id="timer">
+                            <option value="3" selected>3 s</option>
+                            <option value="5">5 s</option>
+                            <option value="10">10 s</option>
+                        </select>
+                    </label>
+                    <label class="check"><input type="checkbox" id="flashlight"> Flash light</label>
+                    <label class="check"><input type="checkbox" id="mirror" checked> Mirror</label>
+                    <label class="check"><input type="checkbox" id="sound" checked> Sound</label>
+                    <button type="button" class="px-btn px-btn-small" id="btn-switch" hidden>Switch camera</button>
                 </div>
+
+                <button type="button" class="start-btn" id="btn-shoot" disabled><span id="shoot-label">Start</span></button>
             </div>
         </section>
-
-        <aside class="tray" aria-label="Your photos">
-            <h2 class="tray-title">Your photos</h2>
-            <ol class="slots" id="slots">
-                <li class="slot"><span class="slot-empty">1</span></li>
-                <li class="slot"><span class="slot-empty">2</span></li>
-                <li class="slot"><span class="slot-empty">3</span></li>
-                <li class="slot"><span class="slot-empty">4</span></li>
-            </ol>
-            <p class="tray-hint" id="tray-hint">Your 4 shots drop in here.</p>
-        </aside>
     </main>
+
+    <section class="win pick-win" id="pick" aria-labelledby="pick-title" hidden>
+        <div class="win-bar"><span>pick_photos.exe</span><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+        <div class="pick-body">
+            <h2 id="pick-title" tabindex="-1">Pick your best 4</h2>
+            <p class="pick-sub" id="pick-sub">Tap photos in the order you want them on the strip. Tap again to remove.</p>
+            <ol class="pick-grid" id="pick-grid"></ol>
+            <div class="pick-actions">
+                <button type="button" class="px-btn px-btn-pink" id="btn-use" disabled>Use these photos</button>
+                <button type="button" class="px-btn" id="btn-retake-all">Retake all</button>
+            </div>
+        </div>
+    </section>
 
     <section class="result" id="result" aria-labelledby="result-title" hidden>
         <div class="result-preview">
             <canvas id="output" aria-label="Your finished photo strip"></canvas>
+            <p class="preview-hint">Tap a sticker to select it. Drag to move it, or drag the white corner to resize and turn it.</p>
         </div>
 
-        <div class="result-panel">
-            <h2 id="result-title" tabindex="-1">Your strip is ready</h2>
-            <p class="result-sub">Change the look, then save it. Tap a photo below to retake just that one.</p>
+        <div class="result-side">
+            <div class="win">
+                <div class="win-bar"><span>stickers.exe</span><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+                <div class="win-pad">
+                    <h2 id="result-title" tabindex="-1">Add stickers</h2>
+                    <div class="sticker-grid" id="sticker-presets" aria-label="Sticker presets"></div>
+                    <h3 class="mini-title">Your own stickers</h3>
+                    <div class="sticker-grid" id="sticker-mine" aria-label="Your stickers"></div>
+                    <label class="px-btn px-btn-small" for="sticker-upload">Add your own image</label>
 
-            <fieldset class="choice" id="layout-choice-2">
-                <legend>Layout</legend>
-                <label><input type="radio" name="layout2" value="strip" checked><span>Strip</span></label>
-                <label><input type="radio" name="layout2" value="grid"><span>Grid</span></label>
-            </fieldset>
+                    <div class="sticker-tools" id="sticker-tools" hidden>
+                        <p class="tools-label">Selected sticker</p>
+                        <div class="tools-row">
+                            <button type="button" class="px-btn px-btn-small" data-tool="smaller" aria-label="Make smaller">Smaller</button>
+                            <button type="button" class="px-btn px-btn-small" data-tool="bigger" aria-label="Make bigger">Bigger</button>
+                            <button type="button" class="px-btn px-btn-small" data-tool="left" >Turn left</button>
+                            <button type="button" class="px-btn px-btn-small" data-tool="right" >Turn right</button>
+                            <button type="button" class="px-btn px-btn-small" data-tool="front">To front</button>
+                            <button type="button" class="px-btn px-btn-small px-btn-danger" data-tool="delete">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            <fieldset class="choice" id="frame-choice">
-                <legend>Frame</legend>
-                <label><input type="radio" name="frame" value="paper" checked><span class="swatch" style="--sw:#ffffff"></span><span>Paper</span></label>
-                <label><input type="radio" name="frame" value="flash"><span class="swatch" style="--sw:#ffd23f"></span><span>Flash</span></label>
-                <label><input type="radio" name="frame" value="booth"><span class="swatch" style="--sw:#1d5654"></span><span>Booth</span></label>
-                <label><input type="radio" name="frame" value="rose"><span class="swatch" style="--sw:#f4a7b9"></span><span>Rose</span></label>
-                <label><input type="radio" name="frame" value="ink"><span class="swatch" style="--sw:#1a1d29"></span><span>Ink</span></label>
-            </fieldset>
-
-            <fieldset class="choice" id="filter-choice-2">
-                <legend>Filter</legend>
-                <label><input type="radio" name="filter2" value="none" checked><span>Natural</span></label>
-                <label><input type="radio" name="filter2" value="bw"><span>B&amp;W</span></label>
-                <label><input type="radio" name="filter2" value="vintage"><span>Vintage</span></label>
-                <label><input type="radio" name="filter2" value="warm"><span>Warm</span></label>
-                <label><input type="radio" name="filter2" value="cool"><span>Cool</span></label>
-                <label><input type="radio" name="filter2" value="pop"><span>Pop</span></label>
-            </fieldset>
-
-            <label class="field"><span>Caption <span class="field-note">(optional)</span></span>
-                <input type="text" id="caption" maxlength="28" placeholder="e.g. Barkada night out" autocomplete="off">
-            </label>
-            <label class="check"><input type="checkbox" id="show-date" checked> Show the date</label>
+            <div class="win">
+                <div class="win-bar"><span>style.exe</span><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+                <div class="win-pad">
+                    <fieldset class="choice" id="frame-choice">
+                        <legend>Frame</legend>
+                        <label><input type="radio" name="frame" value="bubblegum" checked><span class="swatch" style="--sw:#ffc2e2"></span><span>Bubblegum</span></label>
+                        <label><input type="radio" name="frame" value="night"><span class="swatch" style="--sw:#2a1a5e"></span><span>Night</span></label>
+                        <label><input type="radio" name="frame" value="lavender"><span class="swatch" style="--sw:#cdb8ff"></span><span>Lavender</span></label>
+                        <label><input type="radio" name="frame" value="mint"><span class="swatch" style="--sw:#bff5df"></span><span>Mint</span></label>
+                        <label><input type="radio" name="frame" value="paper"><span class="swatch" style="--sw:#ffffff"></span><span>Paper</span></label>
+                        <label class="any-color" title="Pick any color">
+                            <input type="radio" name="frame" value="custom">
+                            <span class="swatch swatch-wheel" id="custom-swatch"></span>
+                            <input type="color" id="frame-color" value="#ff8fc7" aria-label="Pick any frame color">
+                            <span>Any color</span>
+                        </label>
+                    </fieldset>
+                    <fieldset class="choice" id="filter-choice-2">
+                        <legend>Filter</legend>
+                        <label><input type="radio" name="filter2" value="none" checked><span>Natural</span></label>
+                        <label><input type="radio" name="filter2" value="bw"><span>B&amp;W</span></label>
+                        <label><input type="radio" name="filter2" value="vintage"><span>Vintage</span></label>
+                        <label><input type="radio" name="filter2" value="warm"><span>Warm</span></label>
+                        <label><input type="radio" name="filter2" value="cool"><span>Cool</span></label>
+                        <label><input type="radio" name="filter2" value="pop"><span>Pop</span></label>
+                    </fieldset>
+                    
+                    <label class="field"><span>Caption <span class="field-note">(optional)</span></span>
+                        <input type="text" id="caption" maxlength="24" placeholder="e.g. Date night" autocomplete="off">
+                    </label>
+                    <div class="toggles">
+                        <label class="check"><input type="checkbox" id="show-date" checked> Show the date</label>
+                        <label class="check"><input type="checkbox" id="show-mascots" checked> Show the cat and frog</label>
+                    </div>
+                </div>
+            </div>
 
             <div class="result-actions">
-                <button type="button" class="btn btn-flash" id="btn-download">Save photo strip</button>
-                <button type="button" class="btn btn-ghost" id="btn-share" hidden>Share</button>
-                <button type="button" class="btn btn-ghost" id="btn-again">Start over</button>
+                <button type="button" class="start-btn start-btn-small" id="btn-download">Save photo strip</button>
+                <button type="button" class="px-btn px-btn-pink" id="btn-qr" hidden>Get QR code</button>
+                <button type="button" class="px-btn" id="btn-share" hidden>Share</button>
+                <button type="button" class="px-btn" id="btn-again">Start over</button>
             </div>
             <p class="saved-msg" id="saved-msg" role="status" hidden></p>
         </div>
     </section>
 
+    <div class="qr-overlay" id="qr-overlay" hidden>
+        <div class="win qr-win" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+            <div class="win-bar"><span>share_qr.exe</span><button type="button" class="qr-x" id="qr-close" aria-label="Close">×</button></div>
+            <div class="qr-body">
+                <div id="qr-ask">
+                    <h2 id="qr-title" tabindex="-1">Share with a QR code?</h2>
+                    <p>Your strip will be <strong>uploaded</strong> so everyone in the photo can scan the code and save it on their own phone. Anyone with the QR code or link can open it.</p>
+                    <div class="qr-actions">
+                        <button type="button" class="px-btn px-btn-pink" id="qr-go">Upload and make QR</button>
+                        <button type="button" class="px-btn" id="qr-cancel">Cancel</button>
+                    </div>
+                </div>
+                <div id="qr-busy" hidden><p class="qr-wait">Uploading your strip…</p></div>
+                <div id="qr-done" hidden>
+                    <h2 tabindex="-1" id="qr-done-title">Scan to save!</h2>
+                    <canvas id="qr-canvas" width="296" height="296" aria-label="QR code for your photo strip"></canvas>
+                    <p class="qr-hint">Point a phone camera at the code, then tap the link.</p>
+                    <div class="qr-actions">
+                        <button type="button" class="px-btn" id="qr-copy">Copy link</button>
+                    </div>
+                    <p class="qr-link" id="qr-link"></p>
+                </div>
+                <p class="qr-error" id="qr-error" role="alert" hidden></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="screen-light" id="screen-light" aria-hidden="true"></div>
     <input type="file" id="upload" accept="image/*" multiple hidden>
+    <input type="file" id="sticker-upload" accept="image/*" multiple hidden>
 
     <footer class="foot">
-        <p>Your photos stay on this device. Nothing is uploaded or stored anywhere.</p>
-        <p>Made by Genesis Florento. <a href="https://github.com/Hmmentos" id="repo-link">See the code on GitHub</a></p>
+        <p>Your photos stay on this device. Nothing is uploaded unless you tap "Get QR code".</p>
+        <p>Made by Genesis Florento. <a href="https://github.com/" id="repo-link">See the code on GitHub</a></p>
     </footer>
 
+    <script src="js/config.js"></script>
+    <script src="js/vendor/qrcode.js"></script>
+    <script src="js/pixel.js"></script>
     <script src="js/filters.js"></script>
     <script src="js/compose.js"></script>
+    <script src="js/stickers.js"></script>
+    <script src="js/share-qr.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

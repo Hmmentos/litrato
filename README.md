@@ -1,30 +1,55 @@
-# Litrato
+# Milesue's Booth
 
-**A free photobooth that runs in your browser.** Take 4 photos, get a photo strip, and save it, with no fees and no watermark.
+**A free 8-bit photobooth that runs in your browser.** Pick a layout, pose, pick your best shots, add stickers, and save your strip, with no fees and no watermark. Everyone in the photo can scan a QR code to get it on their own phone.
 
-Most online photobooths ask you to pay before you can save your photo. Litrato doesn't. Everything happens on your own device: your photos are never uploaded or stored anywhere.
-
-> *Litrato* is Filipino for "photo".
+Hosted by an orange cat and a frog in a pink pixel night city. 🐱🐸
 
 ## Features
 
-- **3-2-1 countdown** with a flash and a shutter sound
-- **4 photos in a row**, then a finished **photo strip** or **2×2 grid**
-- **6 filters:** Natural, B&W, Vintage, Warm, Cool, Pop (the live preview matches the saved photo)
-- **5 frame colors**, an optional **caption**, and the **date**
-- **Retake just one photo** by tapping it
-- **Save as PNG** (988 × 3052 for the strip), or **Share** straight to apps on phones
-- **No camera?** Use 4 photos from your device instead
-- Timer (3, 5 or 10 seconds), mirror and sound toggles, plus **Esc** or **Stop** to cancel
-- Works on phones and computers, with keyboard focus styles and reduced-motion support
+- **Pick a layout:** Polaroid, 2 cut, 4 cut strip, 2 × 2, 6 cut or 8 cut. The booth takes **2 extra shots** so you can choose your best ones.
+- **Pick your best:** tap photos in the order you want them on the strip.
+- **8-bit countdown** with a flash and retro beeps
+- **Flash light:** uses the phone's torch when the camera has one, or lights up the screen for selfies
+- **Stickers:** pixel art (cat, frog, heart, star, crown, shades and more) and Filipino meme words (SANA ALL, CHAROT, LODI, OMG…)
+- **Your own stickers:** add any picture from your device and use it as a sticker
+- **Sticker editing:** drag to move, drag the corner to resize and turn, or use the buttons and keyboard
+- **6 filters**, **5 frame colors**, an optional caption and the date
+- **Save as PNG**, or **Share** straight to apps on phones
+- **QR code:** everyone in the photo scans it and saves the strip on their own phone (optional, see below)
+- **No camera?** Use photos from your device instead
+- Switch between front and back cameras on phones
 
 ## Privacy
 
-Litrato has no server and no database. The camera feed and your photos stay in your browser's memory and disappear when you close the tab. The saved image goes straight to your device.
+Your camera, photos and stickers stay in your browser and disappear when you close the tab. The saved image goes straight to your device.
+
+The only time anything leaves the device is when you tap **Get QR code** and agree. Then that one finished strip is uploaded to the booth owner's Supabase storage so friends can download it. Anyone with the QR code or link can open it.
+
+## Turn on QR code sharing (optional, about 5 minutes)
+
+The QR button stays hidden until you do this. Use a **new, free Supabase project** just for the booth.
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. **Storage → New bucket:** name it `strips`, turn **Public bucket** on, set the file size limit to `10 MB` and allowed types to `image/png`.
+3. **SQL Editor:** run this so visitors can upload strips (but not list, change or delete them):
+
+   ```sql
+   create policy "Anyone can upload photo strips"
+   on storage.objects for insert to anon
+   with check (bucket_id = 'strips');
+   ```
+
+4. Copy two things into `js/config.js`:
+   - **Project URL:** `https://YOUR-PROJECT-ID.supabase.co` (the Project ID is in **Settings → General**)
+   - **Publishable key:** **Settings → API Keys**, the key starting with `sb_publishable_` (an older project's **anon** key also works). Never use the **secret** key here.
+
+Each strip gets a long random file name, so links can't be guessed. Old strips stay in the bucket until you delete them in **Storage → strips** (files are grouped in folders by date).
+
+When you test on `localhost`, the QR code points straight to the image, because phones can't open your computer's localhost. On the real website, it opens `get.html`, a page with a **Save photo** button.
 
 ## Run it locally
 
-You only need a simple local server, because browsers allow the camera only on `https` or `localhost`.
+Browsers only allow the camera on `https` or `localhost`, so use a small local server:
 
 ```bash
 python -m http.server 5500
@@ -34,7 +59,7 @@ Then open **http://localhost:5500**.
 
 ## Deploy
 
-It's a static site with no build step, so it works on any static host:
+It's a static site with no build step:
 
 - **Vercel:** import the repo and deploy (no settings needed)
 - **GitHub Pages:** Settings → Pages → deploy from the `main` branch
@@ -44,16 +69,22 @@ It's a static site with no build step, so it works on any static host:
 | File | What it does |
 |---|---|
 | `index.html` | Page structure |
-| `css/style.css` | The look: booth colors, countdown, layout |
-| `js/app.js` | Camera, countdown, shooting, retakes, saving |
-| `js/compose.js` | Builds the final strip or grid on a canvas |
-| `js/filters.js` | Filters, using the canvas filter or a pixel fallback for older Safari |
+| `css/style.css` | The 8-bit pink look |
+| `js/pixel.js` | All the pixel art, drawn in code: the cat, the frog, sticker sprites, word bubbles, and the night-city background |
+| `js/app.js` | Camera, flash light, countdown, picking your best, saving |
+| `js/compose.js` | Builds the card for each layout (Polaroid to 8 cut) |
+| `js/stickers.js` | The sticker editor: add, drag, resize, turn, delete |
+| `js/share-qr.js` | Uploads the strip (only when asked) and draws the QR code |
+| `js/config.js` | Your Supabase settings for QR sharing |
+| `get.html` | The page friends open from the QR code |
+| `js/vendor/qrcode.js` | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) by Kazuhiko Arase (MIT) |
+| `js/filters.js` | Filters, with a pixel fallback for older Safari |
 
-Made with plain HTML, CSS and JavaScript using the browser's `getUserMedia` camera API, Canvas, and Web Audio. No frameworks and no libraries.
+Built with plain HTML, CSS and JavaScript using the browser's camera API (`getUserMedia`), Canvas and Web Audio. No frameworks; the only library is a small QR code generator. All the pixel art is original and drawn in code.
 
 ## Credits
 
-- Fonts: [Bungee](https://github.com/djrrb/Bungee) and [Bricolage Grotesque](https://github.com/ateliertriay/bricolage), both under the SIL Open Font License (see `fonts/`).
+- Fonts: [Press Start 2P](https://github.com/codeman38/PressStart2P) and [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans), both under the SIL Open Font License (see `fonts/`).
 
 ## License
 

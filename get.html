@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your photo strip · Milesue's Booth</title>
+    <meta name="robots" content="noindex">
+    <meta name="theme-color" content="#2a1a5e">
+    <link rel="preload" href="fonts/press-start-2p.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%23ff4f9a'/%3E%3Crect x='3' y='2' width='10' height='12' fill='%23fff'/%3E%3Crect x='5' y='4' width='6' height='3' fill='%232a1a5e'/%3E%3Crect x='5' y='9' width='6' height='3' fill='%232a1a5e'/%3E%3C/svg%3E">
+</head>
+<body>
+    <div class="scene" id="scene" aria-hidden="true"></div>
+
+    <header class="title">
+        <span class="title-sprite" id="title-cat"></span>
+        <div>
+            <p class="logo">Milesue's Booth</p>
+            <p class="tagline">Someone shared a photo strip with you!</p>
+        </div>
+        <span class="title-sprite" id="title-frog"></span>
+    </header>
+
+    <main class="win get-win">
+        <div class="win-bar"><span>your_strip.png</span><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+        <div class="get-body">
+            <h1 class="get-title" id="get-title">Save your strip</h1>
+            <img class="get-img" id="get-img" alt="The shared photo strip" hidden>
+            <p class="get-msg" id="get-msg">Loading the photo…</p>
+            <div class="get-actions" id="get-actions" hidden>
+                <a class="start-btn start-btn-small" id="get-save" href="#">Save photo</a>
+                <a class="px-btn" href="./">Make your own</a>
+            </div>
+            <p class="get-tip" id="get-tip" hidden>On iPhone, you can also press and hold the photo, then tap "Save to Photos".</p>
+        </div>
+    </main>
+
+    <footer class="foot">
+        <p>This strip was shared with a QR code from Milesue's Booth.</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/pixel.js"></script>
+    <script>
+        (function () {
+            buildScene(document.getElementById('scene'));
+            document.getElementById('title-cat').appendChild(spriteImg('cat', 4, ''));
+            document.getElementById('title-frog').appendChild(spriteImg('frog', 4, ''));
+
+            const config = window.BOOTH_CONFIG || {};
+            const path = new URLSearchParams(location.search).get('f') || '';
+            const msg = document.getElementById('get-msg');
+            // Only accept the file names the booth makes (date/random-id.png).
+            const valid = /^\d{4}-\d{2}-\d{2}\/[0-9a-f-]{32,36}\.png$/i.test(path);
+            if (!config.supabaseUrl || !valid) {
+                msg.textContent = 'This link is not complete. Ask the person who shared it to send the QR code again.';
+                return;
+            }
+            const base = config.supabaseUrl.replace(/\/+$/, '') + '/storage/v1/object/public/' + config.bucket + '/' + path;
+            const img = document.getElementById('get-img');
+            img.onload = () => {
+                img.hidden = false;
+                msg.hidden = true;
+                document.getElementById('get-actions').hidden = false;
+                document.getElementById('get-tip').hidden = !/iPhone|iPad/i.test(navigator.userAgent);
+            };
+            img.onerror = () => {
+                msg.textContent = 'This photo could not be found. It may have been removed.';
+            };
+            img.src = base;
+            document.getElementById('get-save').href = base + '?download=milesues-booth.png';
+        })();
+    </script>
+</body>
+</html>
