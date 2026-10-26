@@ -286,11 +286,14 @@ function setShootingUi(shooting) {
     els.btnSwitch.disabled = shooting;
 }
 
+// Thumbnails use the same crop as the strip, so you see what you'll get.
 function thumbCanvas(shot, w = 160) {
+    const crop = LAYOUTS[state.layout].crop;
+    const src = crop ? centerCrop(shot, crop) : shot;
     const thumb = document.createElement('canvas');
     thumb.width = w;
-    thumb.height = Math.round(w * 0.75);
-    thumb.getContext('2d').drawImage(shot, 0, 0, thumb.width, thumb.height);
+    thumb.height = Math.round(w * (src.height / src.width));
+    thumb.getContext('2d').drawImage(src, 0, 0, thumb.width, thumb.height);
     thumb.style.filter = FILTERS[state.filter].css;
     return thumb;
 }
@@ -577,6 +580,7 @@ function chooseLayout(key) {
     state.count = LAYOUTS[key].count;
     renderLayoutCards();
     const layout = LAYOUTS[key];
+    applyShotShape(layout);
     document.getElementById('chosen-name').textContent = layout.label;
     document.getElementById('chosen-icon').replaceChildren(layoutIcon(key));
     const total = state.count + EXTRA_SHOTS;
@@ -587,6 +591,14 @@ function chooseLayout(key) {
     document.getElementById('booth').hidden = false;
     document.getElementById('booth').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     say(state.stream ? 'Nice choice! Press Start when you are ready.' : 'Nice choice! Now turn on the camera.');
+}
+
+// The camera window takes the shape of the photos (wide, square or slim),
+// so you can see what will fit before the shot.
+function applyShotShape(layout) {
+    const ratio = layout.crop || SHOT_W / SHOT_H;
+    document.documentElement.style.setProperty('--shot-ratio', String(ratio));
+    document.getElementById('window').classList.toggle('is-narrow', Boolean(layout.crop));
 }
 
 function showLayoutPicker() {
