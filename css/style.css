@@ -114,7 +114,7 @@ button, input, select { font: inherit; color: inherit; }
     margin: 0 auto;
     padding: 8px 16px 28px;
     display: grid;
-    grid-template-columns: min(calc(100% - 384px), max(420px, calc((100vh - 360px) * 4 / 3))) 352px;
+    grid-template-columns: min(calc(100% - 384px), max(420px, calc((100vh - 440px) * 4 / 3))) 352px;
     justify-content: center;
     gap: 32px;
     align-items: start;
@@ -625,3 +625,88 @@ label.px-btn { justify-self: start; }
 .swatch-wheel.is-set {
     background: radial-gradient(circle, var(--sw) 0 3px, transparent 3.5px), conic-gradient(#ff4f9a, #ffd65c, #5ccf6a, #8fd3ff, #9b7bff, #ff4f9a);
 }
+
+/* ---------- Camera tools on the video (Flash, Flip camera) ---------- */
+.cam-tools {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+    display: flex;
+    gap: 8px;
+}
+.cam-tool {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(27, 15, 59, 0.78);
+    color: #fff;
+    border: 3px solid var(--ink);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.cam-tool input { width: 16px; height: 16px; margin: 0; accent-color: var(--moon); }
+.cam-tool:has(input:checked) { background: var(--moon); color: var(--ink); }
+.cam-tool:disabled, .cam-tool:has(input:disabled) { opacity: 0.6; cursor: not-allowed; }
+
+/* Filters right under the camera, then the big Start button. */
+.cam-filters { gap: 6px; }
+.cam-filters legend { margin-bottom: 4px; }
+.cam-body .start-btn { margin-top: 2px; }
+
+/* ---------- Phones: everything you need on one screen ---------- */
+@media (max-width: 600px) {
+    .title { padding: 10px 12px 6px; gap: 10px; }
+    .logo { font-size: 1.05rem; text-shadow: 3px 3px 0 var(--ink), -1px -1px 0 #fff; }
+    .title-sprite .sprite { width: 32px; height: 32px; }
+    .peek-cat { display: none; }
+
+    .booth { padding: 0 6px 20px; gap: 16px; }
+    .win { border-width: 3px; box-shadow: 4px 4px 0 var(--ink); }
+    .win-bar { padding: 4px 8px; font-size: 8px; border-bottom-width: 3px; }
+    .win-dots i { width: 9px; height: 9px; }
+    .cam-body { padding: 6px; gap: 8px; }
+    .window { border-width: 3px; }
+
+    .cam-tools { top: 6px; right: 6px; gap: 6px; }
+    .cam-tool { padding: 4px 8px; font-size: 0.82rem; border-width: 2px; }
+
+    .shots { flex-wrap: nowrap; gap: 4px; }
+    .shot { flex: 1 1 0; width: auto; max-width: 54px; border-width: 2px; font-size: 7px; }
+
+    .buddy { gap: 8px; align-items: center; }
+    .buddy-frog .sprite { width: 34px; height: 34px; }
+    .bubble { margin: 0; padding: 6px 10px; min-height: 0; font-size: 0.92rem; border-width: 3px; box-shadow: 3px 3px 0 var(--pink); }
+    .bubble::before { left: -12px; bottom: 8px; width: 9px; height: 9px; border-left-width: 3px; border-bottom-width: 3px; }
+
+    /* Filters scroll sideways in one row. */
+    .cam-filters { flex-wrap: nowrap; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; }
+    .cam-filters::-webkit-scrollbar { display: none; }
+    .cam-filters legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .cam-filters label { flex: 0 0 auto; }
+    .cam-filters label > span:last-child { padding: 5px 10px; font-size: 0.9rem; border-width: 2px; box-shadow: 2px 2px 0 var(--ink); }
+
+    /* Start stays on screen at the bottom while you scroll the settings. */
+    .cam-body .start-btn {
+        position: sticky;
+        bottom: 8px;
+        z-index: 5;
+        padding: 14px 16px;
+        font-size: 16px;
+        border-width: 3px;
+        box-shadow: 4px 4px 0 var(--ink);
+    }
+
+    .set-body { padding: 10px; gap: 10px; }
+    .chosen-icon { display: none; }
+    .chosen-layout { grid-template-columns: 1fr auto; }
+    .chosen-layout .note { font-size: 0.85rem; }
+    .toggles { gap: 8px 14px; }
+}
+
+/* Fieldsets and grid items must be allowed to shrink, or the sideways
+   filter row makes the whole page wider than the phone. */
+.choice { min-width: 0; min-inline-size: 0; max-width: 100%; }
+.booth > section, .cam-body > *, .result > * { min-width: 0; }

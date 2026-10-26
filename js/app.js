@@ -138,6 +138,7 @@ async function startCamera() {
         await els.video.play().catch(() => {});
         els.camStart.hidden = true;
         els.btnShoot.disabled = false;
+        document.getElementById('cam-tools').hidden = false;
         const track = stream.getVideoTracks()[0];
         const caps = track && track.getCapabilities ? track.getCapabilities() : {};
         state.torch = Boolean(caps && caps.torch);
@@ -243,6 +244,11 @@ async function shootAll() {
     hideAfterShooting();
     renderShotTray(total);
     setShootingUi(true);
+    // On phones, make sure the whole camera is on screen while shooting.
+    const camRect = document.querySelector('.cam-win').getBoundingClientRect();
+    if (camRect.top < 0 || camRect.bottom > window.innerHeight) {
+        document.querySelector('.cam-win').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    }
     const seconds = Number(els.timer.value) || 3;
     let completed = true;
 
@@ -276,7 +282,7 @@ async function shootAll() {
 function setShootingUi(shooting) {
     els.btnShoot.classList.toggle('is-stop', shooting);
     els.shootLabel.textContent = shooting ? 'Stop' : 'Start';
-    document.querySelectorAll('.set-body input, .set-body select').forEach(input => { input.disabled = shooting; });
+    document.querySelectorAll('.set-body input, .set-body select, .cam-tools input, .cam-filters input').forEach(input => { input.disabled = shooting; });
     els.btnSwitch.disabled = shooting;
 }
 
@@ -519,7 +525,7 @@ function startOver() {
     els.caption.value = '';
     hideAfterShooting();
     renderShotTray(state.count + EXTRA_SHOTS);
-    say(state.stream ? 'Ready for another round! Press Start.' : 'Hi! Pick how many photos, then press Start.');
+    say(state.stream ? 'Ready for another round! Press Start.' : 'Hi! Turn on the camera, then press Start.');
     window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
