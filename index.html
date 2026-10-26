@@ -40,6 +40,10 @@
                     <video id="video" autoplay playsinline muted></video>
                     <div class="count" id="count" aria-hidden="true"></div>
                     <div class="flash" id="flash" aria-hidden="true"></div>
+                    <div class="cam-tools" id="cam-tools" hidden>
+                        <label class="cam-tool"><input type="checkbox" id="flashlight"><span>Flash</span></label>
+                        <button type="button" class="cam-tool" id="btn-switch" hidden>Flip camera</button>
+                    </div>
                     <div class="cam-start" id="cam-start">
                         <p>Ready to play? The booth needs your camera.</p>
                         <button type="button" class="px-btn px-btn-pink" id="btn-camera">Turn on camera</button>
@@ -52,8 +56,20 @@
 
                 <div class="buddy">
                     <span class="buddy-frog" id="buddy-frog" aria-hidden="true"></span>
-                    <p class="bubble" id="status" aria-live="polite">Hi! Pick how many photos, then press Start.</p>
+                    <p class="bubble" id="status" aria-live="polite">Hi! Turn on the camera, then press Start.</p>
                 </div>
+
+                <fieldset class="choice cam-filters" id="filter-choice">
+                    <legend>Filter</legend>
+                    <label><input type="radio" name="filter" value="none" checked><span>Natural</span></label>
+                    <label><input type="radio" name="filter" value="bw"><span>B&amp;W</span></label>
+                    <label><input type="radio" name="filter" value="vintage"><span>Vintage</span></label>
+                    <label><input type="radio" name="filter" value="warm"><span>Warm</span></label>
+                    <label><input type="radio" name="filter" value="cool"><span>Cool</span></label>
+                    <label><input type="radio" name="filter" value="pop"><span>Pop</span></label>
+                </fieldset>
+
+                <button type="button" class="start-btn" id="btn-shoot" disabled><span id="shoot-label">Start</span></button>
             </div>
         </section>
 
@@ -69,15 +85,6 @@
                     <button type="button" class="px-btn px-btn-small" id="btn-change-layout">Change</button>
                 </div>
 
-                <fieldset class="choice" id="filter-choice">
-                    <legend>Filter</legend>
-                    <label><input type="radio" name="filter" value="none" checked><span>Natural</span></label>
-                    <label><input type="radio" name="filter" value="bw"><span>B&amp;W</span></label>
-                    <label><input type="radio" name="filter" value="vintage"><span>Vintage</span></label>
-                    <label><input type="radio" name="filter" value="warm"><span>Warm</span></label>
-                    <label><input type="radio" name="filter" value="cool"><span>Cool</span></label>
-                    <label><input type="radio" name="filter" value="pop"><span>Pop</span></label>
-                </fieldset>
 
                 <div class="toggles">
                     <label class="select-label">Timer
@@ -87,13 +94,10 @@
                             <option value="10">10 s</option>
                         </select>
                     </label>
-                    <label class="check"><input type="checkbox" id="flashlight"> Flash light</label>
                     <label class="check"><input type="checkbox" id="mirror" checked> Mirror</label>
                     <label class="check"><input type="checkbox" id="sound" checked> Sound</label>
-                    <button type="button" class="px-btn px-btn-small" id="btn-switch" hidden>Switch camera</button>
                 </div>
 
-                <button type="button" class="start-btn" id="btn-shoot" disabled><span id="shoot-label">Start</span></button>
             </div>
         </section>
     </main>
