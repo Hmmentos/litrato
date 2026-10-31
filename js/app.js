@@ -30,6 +30,8 @@ const els = {
     pickGrid: $('#pick-grid'),
     btnUse: $('#btn-use'),
     btnRetakeAll: $('#btn-retake-all'),
+    pickSub: $('#pick-sub'),
+    btnChangePhotos: $('#btn-change-photos'),
     result: $('#result'),
     resultTitle: $('#result-title'),
     output: $('#output'),
@@ -279,6 +281,35 @@ async function shootAll() {
     showPicker();
 }
 
+// Retake just one photo, keeping all the others (and your picks).
+async function retakeOne(index) {
+    if (state.busy || !state.stream || !state.shots[index]) return;
+    audioContext();
+    state.busy = true;
+    state.stopRequested = false;
+    const total = state.shots.length;
+    setShootingUi(true);
+    renderPicker();
+    document.querySelector('.cam-win').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    say(`Retaking photo ${index + 1}. ${POSES[Math.floor(Math.random() * POSES.length)]}`);
+    markNextSlot(index);
+    const seconds = Number(els.timer.value) || 3;
+    const go = await countdown(seconds);
+    if (go) {
+        const frame = await withFlashLight(captureFrame);
+        fireFlash();
+        if (frame) state.shots[index] = frame;
+        renderShotTray(total);
+        await sleep(reduceMotion ? 300 : 700);
+    }
+    els.count.textContent = '';
+    state.busy = false;
+    setShootingUi(false);
+    markNextSlot(-1);
+    showPicker();
+    say(go ? `Photo ${index + 1} retaken! Pick your photos, then press Use these photos.` : 'Retake stopped. Your photos are still here.');
+}
+
 function setShootingUi(shooting) {
     els.btnShoot.classList.toggle('is-stop', shooting);
     els.shootLabel.textContent = shooting ? 'Stop' : 'Start';
@@ -315,13 +346,17 @@ function markNextSlot(index) {
 
 // ---------- Pick your best ----------
 function showPicker() {
-    if (state.shots.length <= state.count) {
+    // With no extra photos and no camera to retake with, there's nothing to choose.
+    if (state.shots.length <= state.count && !state.stream) {
         state.picked = state.shots.map((_, i) => i);
         showResult();
         return;
     }
     if (!state.picked.length) state.picked = state.shots.slice(0, state.count).map((_, i) => i);
     els.pickTitle.textContent = state.count === 1 ? 'Pick your best shot' : `Pick your best ${state.count}`;
+    els.pickSub.textContent = state.stream
+        ? 'Tap photos in the order you want them on the strip. Tap again to remove. Tap Retake to take just that one again.'
+        : 'Tap photos in the order you want them on the strip. Tap again to remove.';
     renderPicker();
     els.pick.hidden = false;
     els.result.hidden = true;
@@ -350,6 +385,16 @@ function renderPicker() {
         }
         button.addEventListener('click', () => togglePick(i));
         li.appendChild(button);
+        if (state.stream) {
+            const retake = document.createElement('button');
+            retake.type = 'button';
+            retake.className = 'pick-retake';
+            retake.textContent = 'Retake';
+            retake.setAttribute('aria-label', `Retake photo ${i + 1}`);
+            retake.disabled = state.busy;
+            retake.addEventListener('click', () => retakeOne(i));
+            li.appendChild(retake);
+        }
         els.pickGrid.appendChild(li);
     });
     const ready = state.picked.length === state.count;
@@ -663,6 +708,11 @@ frameColor.addEventListener('change', useCustomColor);
 els.btnDownload.addEventListener('click', download);
 els.btnShare.addEventListener('click', share);
 els.btnAgain.addEventListener('click', startOver);
+// From the finished strip, go back to the photos to swap or retake one.
+els.btnChangePhotos.addEventListener('click', () => {
+    if (!state.shots.length) return;
+    showPicker();
+});
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && state.busy) state.stopRequested = true;
 });

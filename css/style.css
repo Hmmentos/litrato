@@ -373,6 +373,23 @@ button, input, select { font: inherit; color: inherit; }
     font-family: var(--px);
     font-size: 12px;
 }
+.pick-grid li { position: relative; }
+.pick-retake {
+    position: absolute;
+    right: 8px;
+    bottom: 10px;
+    padding: 5px 9px;
+    background: var(--white);
+    color: var(--ink);
+    border: 3px solid var(--ink);
+    box-shadow: 2px 2px 0 var(--ink);
+    font-family: var(--px);
+    font-size: 9px;
+    cursor: pointer;
+}
+.pick-retake:hover { background: #fff3f9; }
+.pick-retake:active { transform: translate(2px, 2px); box-shadow: none; }
+.pick-retake:disabled { opacity: 0.5; cursor: not-allowed; }
 .pick-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 
 /* ---------- Result ---------- */
